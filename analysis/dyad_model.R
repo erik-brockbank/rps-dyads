@@ -2306,7 +2306,7 @@ fit_summary_weighted %>% group_by(model) %>% summarize(mean(softmax))
 # Summary plot
 p1 = fit_summary_weighted %>%
   # OPTIONAL: look at only high WCD subjects
-  filter(subject %in% high_wc_subjects$subject) %>%
+  # filter(subject %in% high_wc_subjects$subject) %>%
   # Rest of graph below is same
   ggplot(aes(x = model, y = softmax, color = model)) +
   stat_summary(fun = "mean", geom = "pointrange",
@@ -2327,7 +2327,7 @@ p1 = fit_summary_weighted %>%
 # Individual plot
 p2 = fit_summary_weighted %>%
   # OPTIONAL: look at only high WCD subjects
-  filter(subject %in% high_wc_subjects$subject) %>%
+  # filter(subject %in% high_wc_subjects$subject) %>%
   # Rest of graph below is same
   ggplot(aes(x = model, y = softmax, color = model)) +
   geom_jitter(width = 0.1, height = 0, alpha = 0.5, size = 2) +
@@ -2350,7 +2350,7 @@ fit_summary_weighted %>% group_by(model) %>% summarize(mean(ll_per_round))
 # Summary plot
 p1 = fit_summary_weighted %>%
   # OPTIONAL: look at only high WCD subjects
-  filter(subject %in% high_wc_subjects$subject) %>%
+  # filter(subject %in% high_wc_subjects$subject) %>%
   # Rest of graph below is same
   ggplot(aes(x = model, y = ll_per_round, color = model)) +
   stat_summary(fun = "mean", geom = "pointrange",
@@ -2371,7 +2371,7 @@ p1 = fit_summary_weighted %>%
 # Individual plot
 p2 = fit_summary_weighted %>%
   # OPTIONAL: look at only high WCD subjects
-  filter(subject %in% high_wc_subjects$subject) %>%
+  # filter(subject %in% high_wc_subjects$subject) %>%
   # Rest of graph below is same
   ggplot(aes(x = model, y = ll_per_round, color = model)) +
   geom_jitter(width = 0.1, height = 0, alpha = 0.5, size = 2) +
@@ -2452,6 +2452,59 @@ cor.test(fit_summary_outcome_transition_cor_weighted$softmax, fit_summary_outcom
 
 
 
+# MODEL SUMMARY ====
+
+glimpse(fit_summary)
+glimpse(fit_summary_weighted)
+
+
+fit_summary = fit_summary %>%
+  mutate(model_class = "Baseline")
+fit_summary_weighted = fit_summary_weighted %>%
+  mutate(model_class = "Forgetful")
+
+fit_summary_weighted_rev = fit_summary_weighted %>%
+  mutate(across("model", str_replace, "weighted ", ""))
+fit_summary_weighted_rev$model = factor(
+  fit_summary_weighted_rev$model,
+  levels = c("move baserate",
+             "transition baserate", "opponent transition baserate",
+             "move given previous move", "move given opponent previous move",
+             "outcome given previous transition")
+)
+# sanity check
+unique(fit_summary_weighted_rev$model)
+
+
+fit_summary_combined = rbind(
+  fit_summary,
+  fit_summary_weighted_rev
+)
+fit_summary_combined$model_str = str_wrap(fit_summary_combined$model, 10)
+
+# sanity check
+glimpse(fit_summary_combined)
+
+
+fit_summary_combined %>%
+  ggplot(aes(x = model, y = ll_per_round, color = model_class)) +
+  stat_summary(fun = "mean", geom = "pointrange",
+               fun.max = function(x) mean(x) + sd(x) / sqrt(length(x)),
+               fun.min = function(x) mean(x) - sd(x) / sqrt(length(x)),
+               size = 1.5) +
+  geom_hline(yintercept = -log(3), linetype = "dashed", linewidth = 1, color = "red") +
+  labs(y = "LL (per round)", x = "", color = "Model") +
+  scale_color_viridis(discrete = T,
+                      name = element_blank(),
+                      labels = unique(fit_summary_combined$model_class),
+                      begin = 0.2, end = 0.8) +
+  scale_x_discrete(labels = unique(fit_summary_combined$model_str)) +
+  default_plot_theme +
+  theme(
+    axis.text.x = element_text(angle = 0),
+    legend.spacing.y = unit(1.0, 'lines'),
+    legend.key.size = unit(3, 'lines')
+  )
 
 
 
