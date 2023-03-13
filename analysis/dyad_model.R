@@ -2022,7 +2022,7 @@ dyad_data = apply_outcome_transition_count_prior(dyad_data, EVENT_COUNT_PRIOR)
 dyad_data = calculate_move_probs_outcome_transition(dyad_data, MOVE_PROBABILITY_PRIOR, TRANSITION_VALS) # Calculate move probabilities
 dyad_data = calculate_opponent_move_probs(dyad_data)
 dyad_data = calculate_move_ev(dyad_data, OUTCOME_VALS)
-fit_summary_outcome_transition = fit_model_to_subjects(dyad_data, model = "outcome given previous transition")
+fit_summary_transition_outcome = fit_model_to_subjects(dyad_data, model = "transition given previous outcome")
 
 
 # TODO: move given previous move + opponent previous move; move given previous two moves; transition given previous transition + previous outcome
@@ -2035,13 +2035,13 @@ fit_summary = rbind(fit_summary_moves,
                     fit_summary_opponent_transitions,
                     fit_summary_move_prev_move,
                     fit_summary_move_opponent_prev_move,
-                    fit_summary_outcome_transition)
+                    fit_summary_transition_outcome)
 # Set order of conditions
 fit_summary$model = factor(fit_summary$model,
                            levels = c("move baserate",
                                       "transition baserate", "opponent transition baserate",
                                       "move given previous move", "move given opponent previous move",
-                                      "outcome given previous transition")
+                                      "transition given previous outcome")
                            )
 # Format for figure
 fit_summary$model_str = str_wrap(fit_summary$model, 20)
@@ -2136,6 +2136,81 @@ p2 = fit_summary %>%
 p2 + p1
 
 
+# MODEL STATISTICS - UNWEIGHTED ====
+
+
+# ANOVA comparison: does model type matter for softmax?
+softmax_anova = aov(softmax ~ model,
+                    data = fit_summary)
+summary(softmax_anova)
+
+# ANOVA comparison: does model type matter for LL?
+ll_anova = aov(ll_per_round ~ model,
+               data = fit_summary)
+summary(ll_anova)
+
+# df for ANOVAs
+length(unique(fit_summary$subject))
+
+
+# t-test: do individual model softmax fits differ from 0?
+for (mod in unique(fit_summary$model)) {
+  print(mod)
+  print(
+    t.test(x = fit_summary %>% filter(model == mod) %>% select(softmax),
+           mu = 0)
+  )
+}
+
+# t-test: do individual model LL values differ from chance?
+for (mod in unique(fit_summary$model)) {
+  print(mod)
+  print(
+    t.test(x = fit_summary %>% filter(model == mod) %>% select(ll_per_round),
+           mu = -log(3),
+           alternative = "greater")
+  )
+}
+
+
+
+# Same as above but only high-performing subjects:
+
+# ANOVA comparison: does model type matter for softmax?
+softmax_anova = aov(softmax ~ model,
+                    data = fit_summary %>% filter(subject %in% high_wc_subjects$subject))
+summary(softmax_anova)
+
+# ANOVA comparison: does model type matter for LL?
+ll_anova = aov(ll_per_round ~ model,
+               data = fit_summary %>% filter(subject %in% high_wc_subjects$subject))
+summary(ll_anova)
+
+# df for ANOVAs
+length(unique(fit_summary$subject))
+
+
+
+# t-test: do individual model softmax fits differ from 0?
+for (mod in unique(fit_summary$model)) {
+  print(mod)
+  print(
+    t.test(x = fit_summary %>% filter(model == mod, subject %in% high_wc_subjects$subject) %>% select(softmax),
+           mu = 0)
+    )
+}
+
+# t-test: do individual model LL values differ from chance?
+for (mod in unique(fit_summary$model)) {
+  print(mod)
+  print(
+    t.test(x = fit_summary %>% filter(model == mod, subject %in% high_wc_subjects$subject) %>% select(ll_per_round),
+           mu = -log(3),
+           alternative = "greater")
+  )
+}
+
+
 
 
 
@@ -2160,7 +2235,7 @@ fit_summary_move_prev_move_cor = fit_summary_move_prev_move %>%
 fit_summary_move_opponent_prev_move_cor = fit_summary_move_opponent_prev_move %>%
   inner_join(win_diff, by = c('subject')) %>%
   filter(win_count >= 0)
-fit_summary_outcome_transition_cor = fit_summary_outcome_transition %>%
+fit_summary_transition_outcome_cor = fit_summary_transition_outcome %>%
   inner_join(win_diff, by = c('subject')) %>%
   filter(win_count >= 0)
 
@@ -2171,7 +2246,7 @@ plot(fit_summary_transitions_cor$ll_per_round, fit_summary_transitions_cor$win_c
 plot(fit_summary_opponent_transitions_cor$ll_per_round, fit_summary_opponent_transitions_cor$win_count)
 plot(fit_summary_move_prev_move_cor$ll_per_round, fit_summary_move_prev_move_cor$win_count)
 plot(fit_summary_move_opponent_prev_move_cor$ll_per_round, fit_summary_move_opponent_prev_move_cor$win_count)
-plot(fit_summary_outcome_transition_cor$ll_per_round, fit_summary_outcome_transition_cor$win_count)
+plot(fit_summary_transition_outcome_cor$ll_per_round, fit_summary_transition_outcome_cor$win_count)
 
 
 cor.test(fit_summary_moves_cor$ll_per_round, fit_summary_moves_cor$win_count) # p = .12
@@ -2179,7 +2254,7 @@ cor.test(fit_summary_transitions_cor$ll_per_round, fit_summary_transitions_cor$w
 cor.test(fit_summary_opponent_transitions_cor$ll_per_round, fit_summary_opponent_transitions_cor$win_count) # p = .14
 cor.test(fit_summary_move_prev_move_cor$ll_per_round, fit_summary_move_prev_move_cor$win_count) # p = .0004
 cor.test(fit_summary_move_opponent_prev_move_cor$ll_per_round, fit_summary_move_opponent_prev_move_cor$win_count) # p = .016
-cor.test(fit_summary_outcome_transition_cor$ll_per_round, fit_summary_outcome_transition_cor$win_count) # p < .0001
+cor.test(fit_summary_transition_outcome_cor$ll_per_round, fit_summary_transition_outcome_cor$win_count) # p < .0001
 
 
 # Correlation between softmax estimates and win count differentials
@@ -2188,7 +2263,7 @@ plot(fit_summary_transitions_cor$softmax, fit_summary_transitions_cor$win_count)
 plot(fit_summary_opponent_transitions_cor$softmax, fit_summary_opponent_transitions_cor$win_count)
 plot(fit_summary_move_prev_move_cor$softmax, fit_summary_move_prev_move_cor$win_count)
 plot(fit_summary_move_opponent_prev_move_cor$softmax, fit_summary_move_opponent_prev_move_cor$win_count)
-plot(fit_summary_outcome_transition_cor$softmax, fit_summary_outcome_transition_cor$win_count)
+plot(fit_summary_transition_outcome_cor$softmax, fit_summary_transition_outcome_cor$win_count)
 
 
 cor.test(fit_summary_moves_cor$softmax, fit_summary_moves_cor$win_count) # N.S.
@@ -2196,7 +2271,7 @@ cor.test(fit_summary_transitions_cor$softmax, fit_summary_transitions_cor$win_co
 cor.test(fit_summary_opponent_transitions_cor$softmax, fit_summary_opponent_transitions_cor$win_count) # N.S.
 cor.test(fit_summary_move_prev_move_cor$softmax, fit_summary_move_prev_move_cor$win_count) # p = .07
 cor.test(fit_summary_move_opponent_prev_move_cor$softmax, fit_summary_move_opponent_prev_move_cor$win_count) # N.S.
-cor.test(fit_summary_outcome_transition_cor$softmax, fit_summary_outcome_transition_cor$win_count) # p = .005
+cor.test(fit_summary_transition_outcome_cor$softmax, fit_summary_transition_outcome_cor$win_count) # p = .005
 
 
 
@@ -2272,7 +2347,7 @@ dyad_data = calculate_move_probs_outcome_transition_w(dyad_data, MOVE_PROBABILIT
 # As above, all lines below are not specific to this model
 dyad_data = calculate_opponent_move_probs(dyad_data)
 dyad_data = calculate_move_ev(dyad_data, OUTCOME_VALS)
-fit_summary_outcome_transition_weighted = fit_model_to_subjects(dyad_data, model = "weighted outcome given previous transition")
+fit_summary_transition_outcome_weighted = fit_model_to_subjects(dyad_data, model = "weighted transition given previous outcome")
 
 
 # TODO: *weighted* move given previous move + opponent previous move; move given previous two moves; transition given previous transition + previous outcome
@@ -2287,14 +2362,14 @@ fit_summary_weighted = rbind(fit_summary_moves_weighted,
                              fit_summary_opponent_transitions_weighted,
                              fit_summary_move_prev_move_weighted,
                              fit_summary_move_opponent_prev_move_weighted,
-                             fit_summary_outcome_transition_weighted
+                             fit_summary_transition_outcome_weighted
 )
 # Set order of conditions
 fit_summary_weighted$model = factor(fit_summary_weighted$model,
                                     levels = c("weighted move baserate",
                                                "weighted transition baserate", "weighted opponent transition baserate",
                                                "weighted move given previous move", "weighted move given opponent previous move",
-                                               "weighted outcome given previous transition"
+                                               "weighted transition given previous outcome"
                                     )
 )
 # Format for figure
@@ -2330,7 +2405,7 @@ p2 = fit_summary_weighted %>%
   # filter(subject %in% high_wc_subjects$subject) %>%
   # Rest of graph below is same
   ggplot(aes(x = model, y = softmax, color = model)) +
-  geom_jitter(width = 0.1, height = 0, alpha = 0.5, size = 2) +
+  geom_jitter(width = 0.1, height = 0, alpha = 0.25, size = 2) +
   geom_hline(yintercept = 0, linetype = "dashed", linewidth = 1, color = "red") +
   labs(y = "Softmax parameter") +
   scale_color_viridis(discrete = T,
@@ -2374,7 +2449,7 @@ p2 = fit_summary_weighted %>%
   # filter(subject %in% high_wc_subjects$subject) %>%
   # Rest of graph below is same
   ggplot(aes(x = model, y = ll_per_round, color = model)) +
-  geom_jitter(width = 0.1, height = 0, alpha = 0.5, size = 2) +
+  geom_jitter(width = 0.1, height = 0, alpha = 0.25, size = 2) +
   geom_hline(yintercept = -log(3), linetype = "dashed", linewidth = 1, color = "red") +
   labs(y = "LL (per round)") +
   scale_color_viridis(discrete = T,
@@ -2387,6 +2462,84 @@ p2 = fit_summary_weighted %>%
   )
 
 p2 + p1
+
+
+# MODEL STATISTICS - WEIGHTED ====
+
+# ANOVA comparison: does model type matter for softmax?
+softmax_anova_weighted = aov(softmax ~ model, data = fit_summary_weighted)
+summary(softmax_anova_weighted)
+
+
+# ANOVA comparison: does model type matter for LL?
+ll_anova_weighted = aov(ll_per_round ~ model, data = fit_summary_weighted)
+summary(ll_anova_weighted)
+
+
+# df for ANOVAs
+length(unique(fit_summary_weighted$subject))
+
+
+# t-test: do individual model softmax fits differ from 0?
+for (mod in unique(fit_summary_weighted$model)) {
+  print(mod)
+  print(
+    t.test(x = fit_summary_weighted %>% filter(model == mod) %>% select(softmax),
+           mu = 0)
+  )
+}
+
+# t-test: do individual model LL values differ from chance?
+for (mod in unique(fit_summary_weighted$model)) {
+  print(mod)
+  print(
+    t.test(x = fit_summary_weighted %>% filter(model == mod) %>% select(ll_per_round),
+           mu = -log(3),
+           alternative = "greater")
+  )
+}
+
+
+# Same as above but only high-performing subjects:
+
+# ANOVA comparison: does model type matter for softmax?
+softmax_anova_weighted = aov(softmax ~ model,
+                             data = fit_summary_weighted %>% filter(subject %in% high_wc_subjects$subject))
+summary(softmax_anova_weighted)
+
+# ANOVA comparison: does model type matter for LL?
+ll_anova_weighted = aov(ll_per_round ~ model,
+                        data = fit_summary_weighted %>% filter(subject %in% high_wc_subjects$subject))
+summary(ll_anova_weighted)
+
+# df for ANOVAs
+length(unique(fit_summary_weighted$subject))
+
+
+
+# t-test: do individual model softmax fits differ from 0?
+for (mod in unique(fit_summary_weighted$model)) {
+  print(mod)
+  print(
+    t.test(x = fit_summary_weighted %>% filter(model == mod, subject %in% high_wc_subjects$subject) %>% select(softmax),
+           mu = 0)
+  )
+}
+
+# t-test: do individual model LL values differ from chance?
+for (mod in unique(fit_summary_weighted$model)) {
+  print(mod)
+  print(
+    t.test(x = fit_summary_weighted %>% filter(model == mod, subject %in% high_wc_subjects$subject) %>% select(ll_per_round),
+           mu = -log(3),
+           alternative = "greater")
+  )
+}
+
+
+
+
+
 
 
 # MODEL ANALYSIS - HIGH WIN COUNTS (WEIGHTED) ====
@@ -2470,7 +2623,7 @@ fit_summary_weighted_rev$model = factor(
   levels = c("move baserate",
              "transition baserate", "opponent transition baserate",
              "move given previous move", "move given opponent previous move",
-             "outcome given previous transition")
+             "transition given previous outcome")
 )
 # sanity check
 unique(fit_summary_weighted_rev$model)
@@ -3072,8 +3225,8 @@ for (x in seq(length(PWR_SLOPES))) {
   dyad_data = calculate_move_probs_outcome_transition_w(dyad_data, MOVE_PROBABILITY_PRIOR, TRANSITION_VALS) # Calculate move probabilities
   dyad_data = calculate_opponent_move_probs(dyad_data)
   dyad_data = calculate_move_ev(dyad_data, OUTCOME_VALS)
-  fit_summary_outcome_transition_weighted = fit_model_to_subjects(dyad_data, paste("weighted outcome given previous transition, trial memory:", round(MEMORY_TRIALS[x])))
-  fit_summary_weighted = rbind(fit_summary_weighted, fit_summary_outcome_transition_weighted)
+  fit_summary_transition_outcome_weighted = fit_model_to_subjects(dyad_data, paste("weighted transition given previous outcome, trial memory:", round(MEMORY_TRIALS[x])))
+  fit_summary_weighted = rbind(fit_summary_weighted, fit_summary_transition_outcome_weighted)
 }
 
 # Sanity checks
@@ -3082,10 +3235,10 @@ unique(fit_summary_weighted$model)
 
 
 fit_summary_weighted$model = factor(fit_summary_weighted$model,
-                                    levels = c("outcome given previous transition",
-                                               paste("weighted outcome given previous transition, trial memory:", round(MEMORY_TRIALS[1])),
-                                               paste("weighted outcome given previous transition, trial memory:", round(MEMORY_TRIALS[2])),
-                                               paste("weighted outcome given previous transition, trial memory:", round(MEMORY_TRIALS[3]))
+                                    levels = c("transition given previous outcome",
+                                               paste("weighted transition given previous outcome, trial memory:", round(MEMORY_TRIALS[1])),
+                                               paste("weighted transition given previous outcome, trial memory:", round(MEMORY_TRIALS[2])),
+                                               paste("weighted transition given previous outcome, trial memory:", round(MEMORY_TRIALS[3]))
                                     )
 )
 # Format for figure
@@ -3101,7 +3254,7 @@ p1 = fit_summary_weighted %>%
                fun.max = function(x) mean(x) + sd(x) / sqrt(length(x)),
                fun.min = function(x) mean(x) - sd(x) / sqrt(length(x)),
                size = 1.5) +
-  geom_hline(yintercept = 0, linetype = "dashed", size = 1, color = "red") +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 1, color = "red") +
   labs(y = "") +
   scale_color_viridis(discrete = T,
                       name = paste("Prior multiplier:", PRIOR_MULTIPLIER),
@@ -3116,7 +3269,7 @@ p1 = fit_summary_weighted %>%
 p2 = fit_summary_weighted %>%
   ggplot(aes(x = model, y = softmax, color = model)) +
   geom_jitter(width = 0.1, height = 0, alpha = 0.25, size = 2) +
-  geom_hline(yintercept = 0, linetype = "dashed", size = 1, color = "red") +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 1, color = "red") +
   labs(y = "Softmax parameter") +
   scale_color_viridis(discrete = T,
                       name = element_blank(),
@@ -3139,7 +3292,7 @@ p1 = fit_summary_weighted %>%
                fun.max = function(x) mean(x) + sd(x) / sqrt(length(x)),
                fun.min = function(x) mean(x) - sd(x) / sqrt(length(x)),
                size = 1.5) +
-  geom_hline(yintercept = -log(3), linetype = "dashed", size = 1, color = "red") +
+  geom_hline(yintercept = -log(3), linetype = "dashed", linewidth = 1, color = "red") +
   labs(y = "") +
   scale_color_viridis(discrete = T,
                       name = paste("Prior multiplier:", PRIOR_MULTIPLIER),
@@ -3154,7 +3307,7 @@ p1 = fit_summary_weighted %>%
 p2 = fit_summary_weighted %>%
   ggplot(aes(x = model, y = ll_per_round, color = model)) +
   geom_jitter(width = 0.1, height = 0, alpha = 0.25, size = 2) +
-  geom_hline(yintercept = -log(3), linetype = "dashed", size = 1, color = "red") +
+  geom_hline(yintercept = -log(3), linetype = "dashed", linewidth = 1, color = "red") +
   labs(y = "LL (per round)") +
   scale_color_viridis(discrete = T,
                       name = element_blank(),
