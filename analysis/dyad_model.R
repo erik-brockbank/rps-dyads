@@ -2353,6 +2353,12 @@ fit_summary_transition_outcome_weighted = fit_model_to_subjects(dyad_data, model
 # TODO: *weighted* move given previous move + opponent previous move; move given previous two moves; transition given previous transition + previous outcome
 
 
+# TODO: find best-fitting opponent model for each participant, plot percent of participants
+# best described by each model
+
+# TODO: do these models fit people *reliably*?
+# Split half correlation of LL vals for each participant's first and second 150 rounds?
+
 
 
 # MODEL ANALYSIS - WEIGHTED ====
@@ -3108,7 +3114,6 @@ for (x in seq(length(PWR_SLOPES))) {
   dyad_data = count_opponent_prev_move_current_move_w(dyad_data, pwr_slope = PWR_SLOPES[x])
   dyad_data = apply_opponent_prev_move_count_w_prior(dyad_data, count_prior = PRIOR_TRIALS[x]*3) # NOTE prior*3 here
   dyad_data = apply_opponent_prev_move_current_move_count_w_prior(dyad_data, PRIOR_TRIALS[x])
-  # TODO same concerns as above re: correctness of this process
   dyad_data = calculate_move_probs_move_opponent_prev_move_w(dyad_data, MOVE_PROBABILITY_PRIOR) # Calculate move probabilities
   dyad_data = calculate_opponent_move_probs(dyad_data)
   dyad_data = calculate_move_ev(dyad_data, OUTCOME_VALS)
